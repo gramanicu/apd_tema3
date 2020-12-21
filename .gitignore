@@ -1,0 +1,6 @@
+apd_tema3
+src/*.o
+src/*/*.o
+.vscode*
+*.zip
+*.log
