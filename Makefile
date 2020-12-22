@@ -6,12 +6,13 @@
 # Program arguements
 
 PCOUNT = 5
+SFILE = ./tests/test.txt
 
 # Compilation variables
 CC = mpic++
 CFLAGS = -Wno-unused-parameter -Wno-cast-function-type -Wall -Wextra -pedantic -pthread -g -std=c++17
 EXE = apd_tema3
-SRC = src/Main.cpp src/GenreParser/Parser.cpp
+SRC = src/Main.cpp src/GenreParser/Parser.cpp src/GenreParser/Helpers.cpp src/GenreParser/Paragraph.cpp
 OBJ = $(SRC:.cpp=.o)
 
 CSFILES = */*.cpp */*/*.cpp */*/*.hpp
@@ -27,7 +28,7 @@ build: $(OBJ)
 
 # Executes the binary
 run: clean build
-	@mpirun -np $(PCOUNT) ./$(EXE) ||:
+	@mpirun -np $(PCOUNT) ./$(EXE) $(SFILE)||:
 
 # Deletes the binary and object files
 clean:
