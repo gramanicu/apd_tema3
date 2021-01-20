@@ -1,7 +1,7 @@
 /**
  * @file Helpers.hpp
  * @author Grama Nicolae (gramanicu@gmail.com)
- * @brief
+ * @brief Different constants and helpers functions declarations
  * @copyright Copyright (c) 2020
  */
 

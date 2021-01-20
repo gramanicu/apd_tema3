@@ -38,11 +38,6 @@ clean:
 beauty:
 	clang-format -i -style=file $(CSFILES)
 
-# Checks the memory for leaks
-MFLAGS = --leak-check=full --show-leak-kinds=all --track-origins=yes
-memory:clean build
-	valgrind $(MFLAGS) ./$(EXE) $(INPUT) $(BASE) 
-
 # Adds and updates gitignore rules
 gitignore:
 	@echo "$(EXE)" > .gitignore ||:
@@ -55,7 +50,5 @@ gitignore:
 
 # Creates an archive of the project
 archive: clean
-	cp Readme.md README
-	zip -FSr apd_tema3.zip ./src
-	rm README
+	zip -FSr GRAMA_NICOLAE_332CA_TEMA3_APD_2020.zip ./src Makefile Readme.md
 

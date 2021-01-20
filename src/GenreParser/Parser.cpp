@@ -1,7 +1,7 @@
 /**
  * @file Parser.cpp
  * @author Grama Nicolae (gramanicu@gmail.com)
- * @brief
+ * @brief Paragraph parser implementation
  * @copyright Copyright (c) 2020
  */
 
@@ -10,7 +10,6 @@
 namespace GenreParser {
     Enums::GenresType Parser::current_out_type;
     pthread_barrier_t Parser::barrier;
-    pthread_mutex_t Parser::mutex;
     std::vector<int> Parser::output_order;
     bool Parser::output_created;
 
@@ -36,7 +35,6 @@ namespace GenreParser {
                 input_path.substr(0, input_path.find_last_of('.')) + ".out";
             output_created = false;
             pthread_barrier_init(&barrier, NULL, Constants::MASTER_THREADS);
-            pthread_mutex_init(&mutex, NULL);
         }
     }
 

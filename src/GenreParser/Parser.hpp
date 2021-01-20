@@ -1,7 +1,7 @@
 /**
  * @file Parser.hpp
  * @author Grama Nicolae (gramanicu@gmail.com)
- * @brief
+ * @brief The paragraph parser declaration
  * @copyright Copyright (c) 2020
  */
 
@@ -29,7 +29,6 @@ namespace GenreParser {
         std::string output_path;
         static Enums::GenresType current_out_type;
         static pthread_barrier_t barrier;
-        static pthread_mutex_t mutex;
         static std::vector<int> output_order;
 
         static bool output_created;

@@ -1,7 +1,7 @@
 /**
  * @file Helpers.cpp
  * @author Grama Nicolae (gramanicu@gmail.com)
- * @brief
+ * @brief Helpers implementations
  * @copyright Copyright (c) 2020
  */
 

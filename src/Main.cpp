@@ -1,7 +1,7 @@
 /**
  * @file Main.cpp
  * @author Grama Nicolae (gramanicu@gmail.com)
- * @brief
+ * @brief Main file, runs the parser
  * @copyright Copyright (c) 2020
  */
 
