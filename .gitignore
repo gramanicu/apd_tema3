@@ -1,6 +1,8 @@
-apd_tema3
+main
 src/*.o
 src/*/*.o
 .vscode*
 *.zip
 *.log
+*.out
+*.txt

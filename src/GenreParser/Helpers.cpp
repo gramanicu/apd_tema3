@@ -10,15 +10,42 @@
 namespace GenreParser {
     namespace Enums {
         std::string to_string(const GenresType& gt) {
-            std::stringstream ss;
-            ss << gt;
-            return ss.str();
+            switch (gt) {
+                case GenresType::Horror: {
+                    return "horror";
+                } break;
+                case GenresType::Comedy: {
+                    return "comedy";
+                } break;
+                case GenresType::Fantasy: {
+                    return "fantasy";
+                } break;
+                case GenresType::SciFi: {
+                    return "science-fiction";
+                } break;
+            }
+            return "";
         }
 
         std::string to_string(const NodesType& nt) {
-            std::stringstream ss;
-            ss << nt;
-            return ss.str();
+            switch (nt) {
+                case NodesType::Master: {
+                    return "Master";
+                } break;
+                case NodesType::Horror: {
+                    return "Horror";
+                } break;
+                case NodesType::Comedy: {
+                    return "Comedy";
+                } break;
+                case NodesType::Fantasy: {
+                    return "Fantasy";
+                } break;
+                case NodesType::SciFi: {
+                    return "SciFi";
+                } break;
+            }
+            return "";
         }
 
         std::ostream& operator<<(std::ostream& os, const GenresType& gt) {

@@ -6,13 +6,13 @@
 # Program arguements
 
 PCOUNT = 5
-SFILE = ./tests/test.txt
+SFILE = ./tests/in/input1.txt
 
 # Compilation variables
 CC = mpic++
 CFLAGS = -Wno-unused-parameter -Wno-cast-function-type -Wall -Wextra -pedantic -pthread -g -std=c++17
-EXE = apd_tema3
-SRC = src/Main.cpp src/GenreParser/Parser.cpp src/GenreParser/Helpers.cpp src/GenreParser/Paragraph.cpp
+EXE = main
+SRC = src/Main.cpp src/GenreParser/Parser.cpp src/GenreParser/Helpers.cpp
 OBJ = $(SRC:.cpp=.o)
 
 CSFILES = */*.cpp */*/*.cpp */*/*.hpp
@@ -50,7 +50,8 @@ gitignore:
 	@echo "src/*/*.o" >> .gitignore ||:
 	@echo ".vscode*" >> .gitignore ||:	
 	@echo "*.zip" >> .gitignore ||:	
-	@echo "*.log" >> .gitignore ||:		
+	@echo "*.log" >> .gitignore ||:	
+	@echo "*.out" >> .gitignore ||:		
 
 # Creates an archive of the project
 archive: clean

@@ -10,7 +10,9 @@
 namespace GenreParser {
     Enums::GenresType Parser::current_out_type;
     pthread_barrier_t Parser::barrier;
+    pthread_mutex_t Parser::mutex;
     std::vector<int> Parser::output_order;
+    bool Parser::output_created;
 
     Parser::Parser(int argc, char* argv[]) {
         int provided;
@@ -30,7 +32,11 @@ namespace GenreParser {
             Conditions::MUST(argc >= 2, to_string(node_type) +
                                             ": Input file not provided\n");
             input_path = std::string(argv[1]);
+            output_path =
+                input_path.substr(0, input_path.find_last_of('.')) + ".out";
+            output_created = false;
             pthread_barrier_init(&barrier, NULL, Constants::MASTER_THREADS);
+            pthread_mutex_init(&mutex, NULL);
         }
     }
 
@@ -65,7 +71,7 @@ namespace GenreParser {
         int worker_id = thread_id + 1;
         Enums::GenresType p_type = static_cast<Enums::GenresType>(thread_id);
         std::string genre = Enums::to_string(p_type);
-        std::queue<Paragraph> recv_paragraphs;
+        std::queue<std::string> recv_paragraphs;
 
         std::ifstream input(input_path);
         Conditions::MUST(
@@ -100,13 +106,11 @@ namespace GenreParser {
                 }
 
                 if (input.eof()) { paragraph << line << "\n"; }
+                std::string data = paragraph.str();
 
-                // Store the unprocessed paragraph
-                Paragraph p(paragraph.str());
-
-                // Send Paragraph
-                MPI_Send(p.to_string().c_str(), p.to_string().size(), MPI_CHAR,
-                         worker_id, 0, MPI_COMM_WORLD);
+                // Send the processed paragraph
+                MPI_Send(data.c_str(), data.length(), MPI_CHAR, worker_id, 0,
+                         MPI_COMM_WORLD);
 
                 // Receive the processed paragraph
                 int p_size;
@@ -119,9 +123,10 @@ namespace GenreParser {
                 MPI_Recv(processed_par, p_size, MPI_CHAR, worker_id, 0,
                          MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
+                processed_par[p_size - 1] = '\0';
+
                 // Store paragraph
-                p.set_lines(std::string(processed_par));
-                recv_paragraphs.push(p);
+                recv_paragraphs.push(std::string(processed_par));
 
                 // Prepare next paragraph
                 free(processed_par);
@@ -135,6 +140,8 @@ namespace GenreParser {
         MPI_Send(nullptr, 0, MPI_CHAR, worker_id, 0, MPI_COMM_WORLD);
 
         // Print processed paragraphs
+        std::ofstream out;
+
         for (unsigned int i = 0; i < output_order.size(); ++i) {
             if (thread_id == 0) {
                 current_out_type =
@@ -144,11 +151,24 @@ namespace GenreParser {
             pthread_barrier_wait(&barrier);
 
             if (!recv_paragraphs.empty()) {
-                Paragraph p = recv_paragraphs.front();
-                if (p.get_type() == current_out_type) {
-                    std::cout << p.to_string();
-                    if (i != output_order.size() - 1) { std::cout << "\n"; }
+                std::string p = recv_paragraphs.front();
+
+                // Check type of the paragraph
+                std::stringstream par(p);
+                std::string type;
+                par >> type;
+
+                if (type == Enums::to_string(current_out_type)) {
+                    if (!output_created) {
+                        out.open(output_path);
+                        output_created = true;
+                    } else {
+                        out.open(output_path, std::ios::app);
+                    }
+                    out << p;
+                    if (i != output_order.size() - 1) { out << "\n"; }
                     recv_paragraphs.pop();
+                    out.close();
                 }
             }
 
@@ -172,20 +192,165 @@ namespace GenreParser {
             MPI_Recv(raw_paragraph, p_size, MPI_CHAR, Constants::MASTER,
                      MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
+            raw_paragraph[p_size - 1] = '\0';
+
             if (p_size == 0) {
                 eof = true;
             } else {
-                // Process the paragraph in multiple threads - TODO
-                int lines = 10;
-                int t_count = std::min(lines / 20 + 1, max_threads);
-                std::vector<std::thread> processors(t_count);
+                std::string type, line;
+                std::stringstream p(raw_paragraph);
+                std::vector<std::string> content;
+
+                // Get the number of lines in the paragraph
+                p >> type;
+                while (!p.eof()) {
+                    std::getline(p, line);
+                    if (line.size() != 0) { content.push_back(line); }
+                }
+
+                // Process the paragraph in multiple threads
+                int total_runs =
+                    (int)content.size() / Constants::LINES_PER_THREAD + 1;
+                total_runs = std::max(1, total_runs);
+
+                int remaining_runs = total_runs;
+                int start = 0, end = Constants::LINES_PER_THREAD;
+
+                // Run the maximum allowed number of threads until all lines
+                // are processed
+                while (remaining_runs > 0) {
+                    int t_count = std::min(remaining_runs, max_threads);
+                    t_count = std::max(1, t_count);
+                    std::vector<std::thread> processors(t_count);
+
+                    // Init threads
+                    for (int id = 0; id < t_count; ++id) {
+                        Enums::GenresType t_type =
+                            static_cast<Enums::GenresType>(worker_rank - 1);
+
+                        start = std::min(start, (int)content.size());
+                        end = std::min(end, (int)content.size());
+
+                        processors.push_back(
+                            std::thread(&Parser::process_lines, this,
+                                        std::ref(content), start, end, t_type));
+
+                        start += Constants::LINES_PER_THREAD;
+                        end += Constants::LINES_PER_THREAD;
+                    }
+
+                    for (auto& thread : processors) {
+                        if (thread.joinable()) { thread.join(); }
+                    }
+
+                    remaining_runs -= max_threads;
+                }
+
+                // // Single-Threaded Processing
+                // Enums::GenresType p_type =
+                //     static_cast<Enums::GenresType>(worker_rank - 1);
+                // process_lines(content, 0, content.size(), p_type);
+
+                // Get the processed paragraph data
+                std::stringstream ss;
+                ss << type << "\n";
+                for (auto& line : content) { ss << line << "\n"; }
+
+                std::string data = ss.str();
 
                 // Send the processed paragraph
-                MPI_Send(raw_paragraph, p_size, MPI_CHAR, Constants::MASTER,
-                         status.MPI_TAG, MPI_COMM_WORLD);
+                MPI_Send(data.c_str(), data.length() + 1, MPI_CHAR,
+                         Constants::MASTER, status.MPI_TAG, MPI_COMM_WORLD);
 
                 free(raw_paragraph);
             }
         }
     }
+
+    void Parser::process_lines(std::vector<std::string>& lines, int start,
+                               int end, Enums::GenresType type) const {
+        using namespace Enums;
+
+        switch (type) {
+            case GenresType::Horror: {
+                for (int i = start; i < end; ++i) {
+                    std::stringstream line(lines[i]);
+                    std::string word;
+                    std::string result = "";
+
+                    while (std::getline(line, word, ' ')) {
+                        for (unsigned int lcount = 0; lcount < word.size();
+                             ++lcount) {
+                            result += word.at(lcount);
+                            if (Utilities::is_consonant(word.at(lcount))) {
+                                result += std::tolower(word.at(lcount));
+                            }
+                        }
+                        result += ' ';
+                    }
+                    result.pop_back();
+
+                    lines[i] = result;
+                }
+            } break;
+            case GenresType::Comedy: {
+                for (int i = start; i < end; ++i) {
+                    std::stringstream line(lines[i]);
+                    std::string result = "";
+                    std::string word;
+
+                    while (std::getline(line, word, ' ')) {
+                        for (unsigned int lcount = 0; lcount < word.size();
+                             ++lcount) {
+                            if (lcount % 2 == 1) {
+                                result += std::toupper(word.at(lcount));
+                            } else {
+                                result += word.at(lcount);
+                            }
+                        }
+                        result += ' ';
+                    }
+
+                    result.pop_back();
+                    lines[i] = result;
+                }
+            } break;
+            case GenresType::Fantasy: {
+                for (int i = start; i < end; ++i) {
+                    std::stringstream line(lines[i]);
+                    std::string result = "";
+                    std::string word;
+
+                    while (std::getline(line, word, ' ')) {
+                        word[0] = std::toupper(word[0]);
+                        result += word + " ";
+                    }
+
+                    result.pop_back();
+                    lines[i] = result;
+                }
+            } break;
+            case GenresType::SciFi: {
+                for (int i = start; i < end; ++i) {
+                    std::stringstream line(lines[i]);
+                    std::string result = "";
+                    std::string word;
+                    int word_counter = 0;
+
+                    while (std::getline(line, word, ' ')) {
+                        word_counter++;
+                        if (word_counter == 7) {
+                            word_counter = 0;
+                            std::reverse(word.begin(), word.end());
+                        }
+
+                        result += word + " ";
+                    }
+
+                    result.pop_back();
+                    lines[i] = result;
+                }
+            } break;
+        }
+    }    // namespace GenreParser
 }    // namespace GenreParser

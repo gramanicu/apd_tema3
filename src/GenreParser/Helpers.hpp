@@ -56,3 +56,16 @@ namespace GenreParser::Conditions {
         }
     }
 }    // namespace GenreParser::Conditions
+
+namespace GenreParser::Utilities {
+    inline bool is_vowel(char c) {
+        if (!isalpha(c)) return false;
+        c = std::tolower(c);
+        return (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u');
+    }
+
+    inline bool is_consonant(char c) {
+        if (!isalpha(c)) return false;
+        return !is_vowel(c);
+    }
+}    // namespace GenreParser::Utilities

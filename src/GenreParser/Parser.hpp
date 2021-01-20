@@ -10,13 +10,13 @@
 #include <mpi.h>
 #include <pthread.h>
 
+#include <algorithm>
 #include <fstream>
 #include <queue>
 #include <sstream>
 #include <thread>
 
 #include "Helpers.hpp"
-#include "Paragraph.hpp"
 
 namespace GenreParser {
     class Parser {
@@ -26,9 +26,13 @@ namespace GenreParser {
         Enums::NodesType node_type;    // Equivalent to the worker rank
 
         std::string input_path;
+        std::string output_path;
         static Enums::GenresType current_out_type;
         static pthread_barrier_t barrier;
+        static pthread_mutex_t mutex;
         static std::vector<int> output_order;
+
+        static bool output_created;
 
        public:
         Parser(int argc, char* argv[]);
@@ -53,5 +57,15 @@ namespace GenreParser {
                                const std::vector<std::string> paragraph) const;
 
         void worker_communicator() const;
+
+        /**
+         * @brief Process the specified lines, according to the paragraph type
+         * @param lines The lines of the paragraph
+         * @param start The start index
+         * @param end The end index
+         * @param type The paragraph type
+         */
+        void process_lines(std::vector<std::string>& lines, int start, int end,
+                           Enums::GenresType type) const;
     };
 }    // namespace GenreParser
